@@ -10,7 +10,7 @@ import repositories.HiSchoolRepository
 class HiSchoolController @Inject() (
     cc: ControllerComponents,
     hiSchoolRepository: HiSchoolRepository
-) extends AbstractController(cc):
+) extends AbstractController(cc) {
 
   def listNotes: Action[AnyContent] = Action {
     val notes = hiSchoolRepository.allNotes()
@@ -86,3 +86,4 @@ class HiSchoolController @Inject() (
     }
     Ok(Json.toJson(dtos))
   }
+}

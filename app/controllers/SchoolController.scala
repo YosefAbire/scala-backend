@@ -11,7 +11,7 @@ class SchoolController @Inject() (
     cc: ControllerComponents,
     schoolRepository: SchoolRepository,
     userRepository: UserRepository
-) extends AbstractController(cc):
+) extends AbstractController(cc) {
 
   def list: Action[AnyContent] = Action {
     val schools = schoolRepository.all()
@@ -32,7 +32,7 @@ class SchoolController @Inject() (
   }
 
   def get(id: Long): Action[AnyContent] = Action {
-    schoolRepository.findById(id) match
+    schoolRepository.findById(id) match {
       case Some(s) =>
         Ok(Json.obj(
           "id" -> s.id,
@@ -45,10 +45,11 @@ class SchoolController @Inject() (
         ))
       case None =>
         NotFound(Json.obj("detail" -> "School not found."))
+    }
   }
 
   def create: Action[JsValue] = Action(parse.json) { request =>
-    request.body.validate[ProvisionSchoolRequest] match
+    request.body.validate[ProvisionSchoolRequest] match {
       case JsSuccess(req, _) =>
         val newSchool = schoolRepository.create(req.name, req.code)
         Ok(Json.obj(
@@ -62,6 +63,8 @@ class SchoolController @Inject() (
         ))
       case JsError(_) =>
         BadRequest(Json.obj("detail" -> "Invalid school provision payload."))
+    }
+  }
 
   def createAdmin(id: Long): Action[JsValue] = Action(parse.json) { request =>
     val email = (request.body \ "email").asOpt[String].getOrElse("admin@school.edu")
@@ -73,7 +76,7 @@ class SchoolController @Inject() (
     val roster = userRepository.all().filter(_.schoolId.contains(id)).map { u =>
       Json.obj(
         "id" -> u.id,
-        "name" -> (if u.firstName.nonEmpty then s"${u.firstName} ${u.lastName}" else u.username),
+        "name" -> (if (u.firstName.nonEmpty) s"${u.firstName} ${u.lastName}" else u.username),
         "email" -> u.email,
         "role" -> u.role.value,
         "status" -> "Active"
@@ -89,3 +92,4 @@ class SchoolController @Inject() (
     val user = userRepository.create(email, Role.Student, Some(id), firstName, lastName)
     Ok(Json.obj("id" -> user.id, "email" -> user.email, "name" -> s"$firstName $lastName"))
   }
+}

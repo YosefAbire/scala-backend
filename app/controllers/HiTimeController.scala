@@ -10,7 +10,7 @@ import repositories.HiTimeRepository
 class HiTimeController @Inject() (
     cc: ControllerComponents,
     hiTimeRepository: HiTimeRepository
-) extends AbstractController(cc):
+) extends AbstractController(cc) {
 
   def listTasks: Action[AnyContent] = Action {
     val tasks = hiTimeRepository.findTasksByUser(1)
@@ -30,7 +30,7 @@ class HiTimeController @Inject() (
   }
 
   def createTask: Action[JsValue] = Action(parse.json) { request =>
-    request.body.validate[CreateTaskRequest] match
+    request.body.validate[CreateTaskRequest] match {
       case JsSuccess(req, _) =>
         val subject = req.subject.getOrElse("General")
         val duePeriod = req.duePeriod.orElse(req.due_period).getOrElse("Now")
@@ -46,18 +46,23 @@ class HiTimeController @Inject() (
         ))
       case JsError(_) =>
         BadRequest(Json.obj("detail" -> "Invalid task payload."))
+    }
+  }
 
   def updateTask(id: Long): Action[JsValue] = Action(parse.json) { request =>
     val completedOpt = (request.body \ "completed").asOpt[Boolean]
-    completedOpt match
+    completedOpt match {
       case Some(comp) =>
-        hiTimeRepository.updateTaskStatus(id, comp) match
+        hiTimeRepository.updateTaskStatus(id, comp) match {
           case Some(updated) =>
             Ok(Json.obj("id" -> updated.id, "completed" -> updated.completed))
           case None =>
             NotFound(Json.obj("detail" -> "Task not found."))
+        }
       case None =>
         Ok(Json.obj("id" -> id))
+    }
+  }
 
   def deleteTask(id: Long): Action[AnyContent] = Action {
     hiTimeRepository.deleteTask(id)
@@ -89,3 +94,4 @@ class HiTimeController @Inject() (
     }
     Ok(Json.toJson(dtos))
   }
+}
