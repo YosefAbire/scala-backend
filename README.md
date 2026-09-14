@@ -8,11 +8,12 @@ Repository: [https://github.com/YosefAbire/scala-backend.git](https://github.com
 
 ## 🚀 Overview
 
-The Scala backend serves as the core API engine for HiCenter, powering:
+The Scala backend serves as the primary system of record and API gateway for HiCenter, powering:
 - **User Authentication**: Secure JWT token generation, refresh mechanism, cookie handling, and BCrypt password encryption.
 - **HiTime Sanctuary**: Time management, priority task queue (Now / Next / Later), study routines, and focus session management.
 - **HiSchool Hub**: Verified subject notes, chapter quizzes, peer study circles, and graduate pathway guidance.
 - **School Roster Management**: Multi-tenant school registration, administrator provisioning, and Grade 11–12 student roster controls.
+- **AI Service Proxy**: Secure proxy gateway to `hicenter-ai` service injecting `X-Internal-Service-Key` authentication headers.
 
 ---
 
@@ -24,7 +25,8 @@ The Scala backend serves as the core API engine for HiCenter, powering:
 - **Authentication & Security**:
   - `com.github.jwt-scala` (`jwt-play-json` `10.0.0`)
   - `org.mindrot` (`jbcrypt` `0.4`)
-- **Database Driver**: PostgreSQL (`42.7.3`) / In-Memory Repository Layer
+- **HTTP Client**: Java `HttpClient` (JDK 11+ built-in)
+- **Database Driver**: PostgreSQL (`42.7.3`)
 - **Build Tool**: sbt 1.9+
 
 ---
@@ -37,6 +39,7 @@ scala-backend/
 │   ├── auth/                # JWT Token service & claims handling
 │   │   └── JwtService.scala
 │   ├── controllers/         # Play HTTP controllers
+│   │   ├── AiController.scala      # AI intelligence proxy controller
 │   │   ├── AuthController.scala
 │   │   ├── HealthController.scala
 │   │   ├── HiSchoolController.scala
@@ -45,20 +48,16 @@ scala-backend/
 │   ├── domain/              # Case classes, DTOs & JSON formatters
 │   │   ├── Dtos.scala
 │   │   └── Models.scala
-│   └── repositories/        # Data access repositories
-│       ├── HiSchoolRepository.scala
-│       ├── HiTimeRepository.scala
-│       ├── SchoolRepository.scala
-│       └── UserRepository.scala
+│   ├── repositories/        # Data access repositories
+│   │   ├── HiSchoolRepository.scala
+│   │   ├── HiTimeRepository.scala
+│   │   ├── SchoolRepository.scala
+│   │   └── UserRepository.scala
+│   └── services/            # Microservice client integrations
+│       └── AiService.scala  # HTTP client proxy to hicenter-ai
 ├── conf/
-│   ├── application.conf     # Server & CORS configurations
+│   ├── application.conf     # Server, CORS & AI service configurations
 │   └── routes               # HTTP route declarations
-├── project/                 # sbt build definitions
-│   ├── build.properties
-│   └── plugins.sbt
-├── test/                    # Controller unit & integration tests
-│   └── controllers/
-│       └── HealthControllerSpec.scala
 └── build.sbt                # Project dependencies & Scala 3 configuration
 ```
 
@@ -109,6 +108,27 @@ scala-backend/
 | `GET` | `/api/hitime/routines/` | Fetch morning/evening checklist routines |
 | `GET` | `/api/hitime/sessions/` | Fetch focus timer session logs |
 
+### 6. AI Intelligence & Study Assistance Proxy (`/api/ai/`)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/ai/assistant/chat` | AI Study Assistant tutoring grounded in Grade 11-12 curriculum |
+| `POST` | `/api/ai/tasks/breakdown` | ML-driven study goal breakdown into subtasks |
+| `POST` | `/api/ai/rag/search` | Vector similarity search against verified notes |
+| `POST` | `/api/ai/nlp/summarize` | Note summarization and bulleted key takeaways |
+| `POST` | `/api/ai/nlp/quiz-gen` | Automated formative practice quiz generator |
+
+---
+
+## ⚙️ AI Service Configuration
+
+In `conf/application.conf`:
+
+```hocon
+# HiCenter AI Service Integration
+hicenter.ai.url = "http://localhost:8001"
+hicenter.ai.secret = "hicenter-s2s-secret-key-change-in-production-32bytes"
+```
+
 ---
 
 ## ⚙️ Prerequisites & Setup
@@ -117,7 +137,7 @@ scala-backend/
 - **Java Development Kit (JDK)**: Java 17 or higher
 - **sbt**: version 1.9.0 or higher
 
-### Build & Run Commands
+### Commands
 
 ```bash
 # 1. Compile project sources
@@ -128,26 +148,6 @@ sbt test
 
 # 3. Start development server (Port 9000)
 sbt run
-```
-
----
-
-## 🔗 Integration with Next.js Frontend
-
-The Next.js frontend connects directly to this server via proxy rewrites in `frontend/next.config.ts`:
-
-```typescript
-// next.config.ts
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://127.0.0.1:9000/api/:path*",
-      },
-    ];
-  },
-};
 ```
 
 ---
