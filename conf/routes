@@ -30,3 +30,11 @@ PATCH   /api/hitime/tasks/:id/           controllers.HiTimeController.updateTask
 DELETE  /api/hitime/tasks/:id/           controllers.HiTimeController.deleteTask(id: Long)
 GET     /api/hitime/routines/            controllers.HiTimeController.listRoutines
 GET     /api/hitime/sessions/            controllers.HiTimeController.listSessions
+
+# AI Intelligence & Study Assistance Proxy
+POST    /api/ai/assistant/chat           controllers.AiController.chat
+POST    /api/ai/tasks/breakdown          controllers.AiController.taskBreakdown
+POST    /api/ai/rag/search               controllers.AiController.ragSearch
+POST    /api/ai/nlp/summarize            controllers.AiController.summarizeNote
+POST    /api/ai/nlp/quiz-gen             controllers.AiController.generateQuiz
+
