@@ -1,0 +1,32 @@
+# Health Check
+GET     /api/health/                     controllers.HealthController.health
+
+# Authentication
+POST    /api/auth/login/                 controllers.AuthController.login
+POST    /api/auth/logout/                controllers.AuthController.logout
+POST    /api/auth/refresh/               controllers.AuthController.refresh
+GET     /api/auth/me/                    controllers.AuthController.me
+POST    /api/auth/activate/              controllers.AuthController.activate
+
+# Schools & Roster Management
+GET     /api/schools/                    controllers.SchoolController.list
+POST    /api/schools/                    controllers.SchoolController.create
+GET     /api/schools/:id/                controllers.SchoolController.get(id: Long)
+POST    /api/schools/:id/admins/         controllers.SchoolController.createAdmin(id: Long)
+GET     /api/schools/:id/roster/         controllers.SchoolController.roster(id: Long)
+POST    /api/schools/:id/students/       controllers.SchoolController.createStudent(id: Long)
+
+# HiSchool Archive & Learning Hub
+GET     /api/hischool/notes/             controllers.HiSchoolController.listNotes
+POST    /api/hischool/notes/            controllers.HiSchoolController.createNote
+GET     /api/hischool/quizzes/           controllers.HiSchoolController.listQuizzes
+GET     /api/hischool/circles/           controllers.HiSchoolController.listCircles
+GET     /api/hischool/pathways/          controllers.HiSchoolController.listPathways
+
+# HiTime Focus Sanctuary & Tasks
+GET     /api/hitime/tasks/               controllers.HiTimeController.listTasks
+POST    /api/hitime/tasks/               controllers.HiTimeController.createTask
+PATCH   /api/hitime/tasks/:id/           controllers.HiTimeController.updateTask(id: Long)
+DELETE  /api/hitime/tasks/:id/           controllers.HiTimeController.deleteTask(id: Long)
+GET     /api/hitime/routines/            controllers.HiTimeController.listRoutines
+GET     /api/hitime/sessions/            controllers.HiTimeController.listSessions

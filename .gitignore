@@ -1,0 +1,22 @@
+# Scala & sbt
+target/
+project/target/
+project/project/
+.bsp/
+.sbtopts
+.sbt-coursier-tap
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.eclipse/
+.metals/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
