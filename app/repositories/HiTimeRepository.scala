@@ -37,9 +37,9 @@ class HiTimeRepository @Inject() ():
   def findTasksByUser(userId: Long): Seq[TaskItem] =
     tasks.values().asScala.toSeq.filter(_.userId == userId).sortBy(-_.createdAt.toEpochMilli)
 
-  def createTask(userId: Long, title: String, subject: String, duePeriod: String, timeEstimate: String): TaskItem =
+  def createTask(userId: Long, title: String, subject: String, duePeriod: String, timeEstimate: String, notes: String = ""): TaskItem =
     val id = taskIdGen.incrementAndGet()
-    val task = TaskItem(id, userId, title, subject, duePeriod, "Today", timeEstimate, completed = false)
+    val task = TaskItem(id, userId, title, subject, duePeriod, "Today", timeEstimate, completed = false, notes = notes)
     tasks.put(id, task)
     task
 

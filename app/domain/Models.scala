@@ -270,3 +270,16 @@ case class NotificationItem(
 
 object NotificationItem:
   implicit val format: OFormat[NotificationItem] = Json.format[NotificationItem]
+
+case class SubjectMastery(
+    userId: Long,
+    subject: String,
+    masteryScore: Int,
+    totalAttempts: Int = 1,
+    weakTopics: List[String] = Nil,
+    lastAssessedAt: Instant = Instant.now()
+)
+
+object SubjectMastery:
+  implicit val format: OFormat[SubjectMastery] = Json.format[SubjectMastery]
+

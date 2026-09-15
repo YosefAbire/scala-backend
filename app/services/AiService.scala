@@ -106,5 +106,15 @@ class AiService @Inject() (
     )
     postJson("/ai/rag/index", payload)
   }
+
+  def generateLearningLoopRecommendation(userId: Long, grade: Int, masteries: JsValue): Future[Either[String, JsValue]] = {
+    val payload = Json.obj(
+      "user_id" -> userId,
+      "grade" -> grade,
+      "masteries" -> masteries
+    )
+    postJson("/ai/recommendations/learning-loop", payload)
+  }
 }
+
 

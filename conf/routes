@@ -65,3 +65,9 @@ POST    /api/ai/tasks/breakdown          controllers.AiController.taskBreakdown
 POST    /api/ai/rag/search               controllers.AiController.ragSearch
 POST    /api/ai/nlp/summarize            controllers.AiController.summarizeNote
 POST    /api/ai/nlp/quiz-gen             controllers.AiController.generateQuiz
+
+# Learning Intelligence Loop 🧠
+GET     /api/learning-loop/mastery              controllers.LearningLoopController.getMastery
+GET     /api/learning-loop/recommendations      controllers.LearningLoopController.getRecommendations
+POST    /api/learning-loop/tasks/convert        controllers.LearningLoopController.convertRecommendationToTask
+

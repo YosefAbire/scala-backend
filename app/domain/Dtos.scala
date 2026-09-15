@@ -151,3 +151,15 @@ case class PlatformDashboardDto(
 
 object PlatformDashboardDto:
   implicit val format: OFormat[PlatformDashboardDto] = Json.format[PlatformDashboardDto]
+
+case class ConvertRecommendationRequest(
+    subject: String,
+    taskTitle: String,
+    duePeriod: Option[String],
+    estimatedMinutes: Option[Int],
+    notes: Option[String]
+)
+
+object ConvertRecommendationRequest:
+  implicit val format: OFormat[ConvertRecommendationRequest] = Json.format[ConvertRecommendationRequest]
+

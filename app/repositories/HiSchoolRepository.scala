@@ -14,6 +14,15 @@ class HiSchoolRepository @Inject() ():
   private val circles = new ConcurrentHashMap[Long, StudyCircle]()
   private val pathways = new ConcurrentHashMap[Long, GraduatePathway]()
   private val discussions = new ConcurrentHashMap[Long, DiscussionPost]()
+  private val masteries = new ConcurrentHashMap[String, SubjectMastery]()
+
+  // Seed default masteries for demo user 1
+  private val m1 = SubjectMastery(1, "AP Chemistry", 65, 3, List("Equilibrium & Le Chatelier Principle"))
+  private val m2 = SubjectMastery(1, "AP Calculus", 92, 5, List("Taylor Series Error Bounds"))
+  private val m3 = SubjectMastery(1, "Physics", 80, 2, List("Thermodynamics"))
+  masteries.put(s"1_${m1.subject.toLowerCase}", m1)
+  masteries.put(s"1_${m2.subject.toLowerCase}", m2)
+  masteries.put(s"1_${m3.subject.toLowerCase}", m3)
   
   private val noteIdGen = new java.util.concurrent.atomic.AtomicLong(10)
   private val quizAttemptIdGen = new java.util.concurrent.atomic.AtomicLong(100)
@@ -158,8 +167,29 @@ class HiSchoolRepository @Inject() ():
       val updatedQuiz = q.copy(masteryScore = Some(percentage))
       quizzes.put(quizId, updatedQuiz)
 
+      // Automatically update Subject Mastery state
+      updateMasteryFromAttempt(userId, q.subject, percentage)
+
       attempt
     }
+
+  def getUserMasteries(userId: Long): Seq[SubjectMastery] =
+    masteries.values().asScala.toSeq.filter(_.userId == userId)
+
+  def updateMasteryFromAttempt(userId: Long, subject: String, scorePercentage: Int): SubjectMastery =
+    val key = s"${userId}_${subject.toLowerCase}"
+    val existingOpt = Option(masteries.get(key))
+    val updated = existingOpt match {
+      case Some(m) =>
+        val newAttempts = m.totalAttempts + 1
+        val newScore = Math.round((m.masteryScore * m.totalAttempts + scorePercentage).toDouble / newAttempts).toInt
+        val updatedWeak = if (scorePercentage < 80) List(s"$subject Diagnostic Weak Area") else m.weakTopics
+        m.copy(masteryScore = newScore, totalAttempts = newAttempts, weakTopics = updatedWeak, lastAssessedAt = Instant.now())
+      case None =>
+        SubjectMastery(userId, subject, scorePercentage, 1, if (scorePercentage < 80) List(s"$subject Fundamentals") else Nil, Instant.now())
+    }
+    masteries.put(key, updated)
+    updated
 
   def findQuizResultsByUser(userId: Long): Seq[QuizAttempt] =
     quizAttempts.values().asScala.toSeq.filter(_.userId == userId).sortBy(-_.createdAt.toEpochMilli)
