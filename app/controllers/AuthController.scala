@@ -19,8 +19,9 @@ class AuthController @Inject() (
       case JsSuccess(loginReq, _) =>
         userRepository.findByEmail(loginReq.email) match {
           case Some(user) =>
-            val accessToken = jwtService.createToken(user.id, user.email, user.role.value, ttlSeconds = 86400)
-            val refreshToken = jwtService.createToken(user.id, user.email, user.role.value, ttlSeconds = 604800)
+            val accessToken = jwtService.createToken(user.id, user.email, user.role.value, schoolId = user.schoolId, ttlSeconds = 86400)
+            val refreshToken = jwtService.createToken(user.id, user.email, user.role.value, schoolId = user.schoolId, ttlSeconds = 604800)
+
 
             val sessionDto = UserSessionDto(
               id = s"usr_${user.id}",

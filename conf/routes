@@ -1,5 +1,8 @@
-# Health Check
+# Health Check & Observability
 GET     /api/health/                     controllers.HealthController.health
+GET     /health                          controllers.HealthController.health
+GET     /ready                           controllers.HealthController.ready
+
 
 # Authentication
 POST    /api/auth/login/                 controllers.AuthController.login

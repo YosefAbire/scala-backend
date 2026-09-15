@@ -10,7 +10,8 @@ import java.time.Instant
 case class UserClaim(
     userId: Long,
     email: String,
-    role: String
+    role: String,
+    schoolId: Option[Long] = None
 )
 
 object UserClaim:
@@ -30,15 +31,19 @@ class JwtService @Inject() (config: Configuration):
     catch
       case _: Exception => false
 
-  def createToken(userId: Long, email: String, role: String, ttlSeconds: Long = 86400): String =
+  def createToken(userId: Long, email: String, role: String, schoolId: Option[Long] = None, ttlSeconds: Long = 86400): String =
     val now = Instant.now().getEpochSecond
-    val claim = Json.obj(
+    val base = Json.obj(
       "userId" -> userId,
       "email" -> email,
       "role" -> role,
       "iat" -> now,
       "exp" -> (now + ttlSeconds)
     )
+    val claim = schoolId match {
+      case Some(s) => base ++ Json.obj("schoolId" -> s)
+      case None    => base
+    }
     JwtJson.encode(claim, secretKey, algorithm)
 
   def validateToken(token: String): Option[UserClaim] =
@@ -47,5 +52,18 @@ class JwtService @Inject() (config: Configuration):
         userId <- (json \ "userId").asOpt[Long]
         email <- (json \ "email").asOpt[String]
         role <- (json \ "role").asOpt[String]
-      yield UserClaim(userId, email, role)
+      yield UserClaim(userId, email, role, (json \ "schoolId").asOpt[Long])
     }
+
+  def makeAuthCookie(token: String, maxAgeSeconds: Int = 86400): play.api.mvc.Cookie =
+    play.api.mvc.Cookie(
+      name = "access_token",
+      value = token,
+      maxAge = Some(maxAgeSeconds),
+      path = "/",
+      domain = None,
+      secure = false,
+      httpOnly = true,
+      sameSite = Some(play.api.mvc.Cookie.SameSite.Lax)
+    )
+

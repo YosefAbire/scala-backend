@@ -118,6 +118,9 @@ class HiSchoolRepository @Inject() ():
 
   def allNotes(): Seq[StudyNote] = notes.values().asScala.toSeq.sortBy(-_.createdAt.toEpochMilli)
   
+  def notesForSchool(schoolId: Long): Seq[StudyNote] =
+    allNotes().filter(_.schoolId == schoolId)
+
   def findNoteById(id: Long): Option[StudyNote] = Option(notes.get(id))
 
   def createNote(title: String, subject: String, summary: String, authorId: Long = 1, schoolId: Long = 1): StudyNote =
@@ -163,7 +166,16 @@ class HiSchoolRepository @Inject() ():
 
   def allQuizzes(): Seq[PracticeQuiz] = quizzes.values().asScala.toSeq
 
+  def quizzesForSchool(schoolId: Long): Seq[PracticeQuiz] =
+    allQuizzes().filter(_.schoolId == schoolId)
+
   def findQuizById(id: Long): Option[PracticeQuiz] = Option(quizzes.get(id))
+
+  def allCircles(): Seq[StudyCircle] = circles.values().asScala.toSeq
+
+  def circlesForSchool(schoolId: Long): Seq[StudyCircle] =
+    allCircles().filter(_.schoolId == schoolId)
+
 
   def evaluateAndSaveQuizAttempt(quizId: Long, userId: Long, answers: Map[String, Int]): Option[QuizAttempt] =
     findQuizById(quizId).map { q =>
@@ -281,9 +293,8 @@ class HiSchoolRepository @Inject() ():
   def findQuizResultsByUser(userId: Long): Seq[QuizAttempt] =
     quizAttempts.values().asScala.toSeq.filter(_.userId == userId).sortBy(-_.createdAt.toEpochMilli)
 
-  def allCircles(): Seq[StudyCircle] = circles.values().asScala.toSeq
-
   def findCircleById(id: Long): Option[StudyCircle] = Option(circles.get(id))
+
 
   def createCircle(name: String, subject: String, leadId: Long, schoolId: Long = 1): StudyCircle =
     val id = circleIdGen.incrementAndGet()
