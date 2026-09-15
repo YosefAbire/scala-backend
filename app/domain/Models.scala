@@ -271,6 +271,30 @@ case class NotificationItem(
 object NotificationItem:
   implicit val format: OFormat[NotificationItem] = Json.format[NotificationItem]
 
+case class TopicMastery(
+    topic: String,
+    masteryScore: Int,
+    attemptsCount: Int = 1,
+    lastScore: Int = 0,
+    lastAssessedAt: Instant = Instant.now()
+)
+
+object TopicMastery:
+  implicit val format: OFormat[TopicMastery] = Json.format[TopicMastery]
+
+case class SubjectLearningProgress(
+    userId: Long,
+    subject: String,
+    overallMastery: Int,
+    totalAssessmentsCompleted: Int,
+    topicMasteries: List[TopicMastery],
+    recommendedFocusAreas: List[String],
+    lastAssessedAt: Instant = Instant.now()
+)
+
+object SubjectLearningProgress:
+  implicit val format: OFormat[SubjectLearningProgress] = Json.format[SubjectLearningProgress]
+
 case class SubjectMastery(
     userId: Long,
     subject: String,
@@ -282,4 +306,5 @@ case class SubjectMastery(
 
 object SubjectMastery:
   implicit val format: OFormat[SubjectMastery] = Json.format[SubjectMastery]
+
 

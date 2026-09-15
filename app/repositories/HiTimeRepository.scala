@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 
 @Singleton
-class HiTimeRepository @Inject() ():
+class HiTimeRepository @Inject() (
+    hiSchoolRepository: HiSchoolRepository
+):
   private val tasks = new ConcurrentHashMap[Long, TaskItem]()
   private val routines = new ConcurrentHashMap[Long, RoutineItem]()
   private val sessions = new ConcurrentHashMap[Long, FocusSession]()
@@ -47,6 +49,10 @@ class HiTimeRepository @Inject() ():
     Option(tasks.get(id)).map { t =>
       val updated = t.copy(completed = completed)
       tasks.put(id, updated)
+      if (completed) {
+        // Apply active study signal boost (+3% topic mastery)
+        hiSchoolRepository.applyStudyTaskBoost(t.userId, t.subject, t.title)
+      }
       updated
     }
 

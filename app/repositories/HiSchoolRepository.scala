@@ -15,11 +15,36 @@ class HiSchoolRepository @Inject() ():
   private val pathways = new ConcurrentHashMap[Long, GraduatePathway]()
   private val discussions = new ConcurrentHashMap[Long, DiscussionPost]()
   private val masteries = new ConcurrentHashMap[String, SubjectMastery]()
+  private val subjectProgressMap = new ConcurrentHashMap[String, SubjectLearningProgress]()
 
-  // Seed default masteries for demo user 1
-  private val m1 = SubjectMastery(1, "AP Chemistry", 65, 3, List("Equilibrium & Le Chatelier Principle"))
-  private val m2 = SubjectMastery(1, "AP Calculus", 92, 5, List("Taylor Series Error Bounds"))
-  private val m3 = SubjectMastery(1, "Physics", 80, 2, List("Thermodynamics"))
+  // Seed default masteries & topic progress for demo user 1
+  private val physicsTopics = List(
+    TopicMastery("Kinematics", 82, 3, 82),
+    TopicMastery("Newton's Laws", 61, 2, 60),
+    TopicMastery("Energy", 74, 4, 75),
+    TopicMastery("Momentum", 43, 1, 40)
+  )
+  private val physProgress = SubjectLearningProgress(1, "Physics", 65, 10, physicsTopics, List("Momentum", "Newton's Laws"))
+  subjectProgressMap.put("1_physics", physProgress)
+
+  private val chemTopics = List(
+    TopicMastery("Equilibrium", 65, 3, 60),
+    TopicMastery("Thermodynamics", 78, 2, 80),
+    TopicMastery("Stoichiometry", 90, 5, 92)
+  )
+  private val chemProgress = SubjectLearningProgress(1, "AP Chemistry", 77, 10, chemTopics, List("Equilibrium"))
+  subjectProgressMap.put("1_ap chemistry", chemProgress)
+
+  private val calcTopics = List(
+    TopicMastery("Taylor Series", 92, 5, 95),
+    TopicMastery("Integration", 92, 4, 90)
+  )
+  private val calcProgress = SubjectLearningProgress(1, "AP Calculus", 92, 9, calcTopics, List("Integration"))
+  subjectProgressMap.put("1_ap calculus", calcProgress)
+
+  private val m1 = SubjectMastery(1, "AP Chemistry", 77, 3, List("Equilibrium"))
+  private val m2 = SubjectMastery(1, "AP Calculus", 92, 5, List("Taylor Series"))
+  private val m3 = SubjectMastery(1, "Physics", 65, 2, List("Momentum", "Newton's Laws"))
   masteries.put(s"1_${m1.subject.toLowerCase}", m1)
   masteries.put(s"1_${m2.subject.toLowerCase}", m2)
   masteries.put(s"1_${m3.subject.toLowerCase}", m3)
@@ -167,10 +192,72 @@ class HiSchoolRepository @Inject() ():
       val updatedQuiz = q.copy(masteryScore = Some(percentage))
       quizzes.put(quizId, updatedQuiz)
 
-      // Automatically update Subject Mastery state
+      // Automatically update Subject Mastery & Topic Learning Progress state
+      val topicName = q.title.replaceAll("AP |Sprint|Diagnostic|Integration|Equilibrium", "").trim match {
+        case s if s.nonEmpty => s
+        case _ => s"${q.subject} Core Topic"
+      }
       updateMasteryFromAttempt(userId, q.subject, percentage)
+      updateProgressFromQuizAttempt(userId, q.subject, topicName, percentage)
 
       attempt
+    }
+
+  def getUserLearningProgress(userId: Long): Seq[SubjectLearningProgress] =
+    subjectProgressMap.values().asScala.toSeq.filter(_.userId == userId)
+
+  def updateProgressFromQuizAttempt(userId: Long, subject: String, topic: String, quizScore: Int): SubjectLearningProgress =
+    val key = s"${userId}_${subject.toLowerCase}"
+    val existingOpt = Option(subjectProgressMap.get(key))
+    
+    val currentProgress = existingOpt.getOrElse(
+      SubjectLearningProgress(userId, subject, quizScore, 0, List(TopicMastery(topic, quizScore, 1, quizScore)), List(topic))
+    )
+
+    val existingTopics = currentProgress.topicMasteries
+    val targetTopicOpt = existingTopics.find(_.topic.equalsIgnoreCase(topic))
+    
+    val updatedTopics = targetTopicOpt match {
+      case Some(tm) =>
+        // Topic Mastery Formula: 70% latest score + 30% historical average
+        val newScore = Math.round(0.7 * quizScore.toDouble + 0.3 * tm.masteryScore.toDouble).toInt
+        existingTopics.map(t => if (t.topic.equalsIgnoreCase(topic)) t.copy(masteryScore = newScore, attemptsCount = t.attemptsCount + 1, lastScore = quizScore, lastAssessedAt = Instant.now()) else t)
+      case None =>
+        existingTopics :+ TopicMastery(topic, quizScore, 1, quizScore, Instant.now())
+    }
+
+    // Overall Subject Mastery Formula: Average of all topic masteries
+    val overall = Math.round(updatedTopics.map(_.masteryScore).sum.toDouble / updatedTopics.length.toDouble).toInt
+    val weakTopics = updatedTopics.filter(_.masteryScore < 75).map(_.topic)
+
+    val updatedProgress = currentProgress.copy(
+      overallMastery = overall,
+      totalAssessmentsCompleted = currentProgress.totalAssessmentsCompleted + 1,
+      topicMasteries = updatedTopics,
+      recommendedFocusAreas = weakTopics,
+      lastAssessedAt = Instant.now()
+    )
+
+    subjectProgressMap.put(key, updatedProgress)
+    updatedProgress
+
+  def applyStudyTaskBoost(userId: Long, subject: String, topic: String): Option[SubjectLearningProgress] =
+    val key = s"${userId}_${subject.toLowerCase}"
+    Option(subjectProgressMap.get(key)).map { progress =>
+      val updatedTopics = progress.topicMasteries.map { tm =>
+        if (tm.topic.equalsIgnoreCase(topic) || subject.equalsIgnoreCase(tm.topic)) {
+          tm.copy(masteryScore = Math.min(100, tm.masteryScore + 3))
+        } else tm
+      }
+      val overall = Math.round(updatedTopics.map(_.masteryScore).sum.toDouble / updatedTopics.length.toDouble).toInt
+      val updated = progress.copy(
+        overallMastery = overall,
+        topicMasteries = updatedTopics,
+        recommendedFocusAreas = updatedTopics.filter(_.masteryScore < 75).map(_.topic),
+        lastAssessedAt = Instant.now()
+      )
+      subjectProgressMap.put(key, updated)
+      updated
     }
 
   def getUserMasteries(userId: Long): Seq[SubjectMastery] =

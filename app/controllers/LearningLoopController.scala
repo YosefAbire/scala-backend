@@ -42,19 +42,25 @@ class LearningLoopController @Inject() (
 
   def getMastery: Action[AnyContent] = Action { request =>
     withUser(request) { (userId, _) =>
-      val masteries = hiSchoolRepository.getUserMasteries(userId)
-      Ok(Json.toJson(masteries))
+      val progressList = hiSchoolRepository.getUserLearningProgress(userId)
+      if (progressList.nonEmpty) {
+        Ok(Json.toJson(progressList))
+      } else {
+        val legacyMasteries = hiSchoolRepository.getUserMasteries(userId)
+        Ok(Json.toJson(legacyMasteries))
+      }
     }
   }
 
   def getRecommendations: Action[AnyContent] = Action.async { request =>
     withUserAsync(request) { (userId, _) =>
-      val masteries = hiSchoolRepository.getUserMasteries(userId)
-      val masteriesJson = Json.toJson(masteries.map { m =>
+      val progressList = hiSchoolRepository.getUserLearningProgress(userId)
+      val masteriesJson = Json.toJson(progressList.map { p =>
         Json.obj(
-          "subject" -> m.subject,
-          "mastery_score" -> m.masteryScore,
-          "weak_topics" -> m.weakTopics
+          "subject" -> p.subject,
+          "mastery_score" -> p.overallMastery,
+          "topic_masteries" -> p.topicMasteries.map(tm => Json.obj("topic" -> tm.topic, "mastery_score" -> tm.masteryScore, "attempts_count" -> tm.attemptsCount)),
+          "weak_topics" -> p.recommendedFocusAreas
         )
       })
 
@@ -63,17 +69,17 @@ class LearningLoopController @Inject() (
           Ok(aiResponse)
         case Left(_) =>
           // Robust local fallback recommendation if hicenter-ai microservice is unreachable
-          val fallbackRecs = masteries.map { m =>
-            val topic = m.weakTopics.headOption.getOrElse(s"${m.subject} Fundamentals")
-            val duePeriod = if (m.masteryScore < 75) "Now" else if (m.masteryScore < 85) "Next" else "Later"
+          val fallbackRecs = progressList.map { p =>
+            val topic = p.recommendedFocusAreas.headOption.orElse(p.topicMasteries.headOption.map(_.topic)).getOrElse(s"${p.subject} Fundamentals")
+            val duePeriod = if (p.overallMastery < 75) "Now" else if (p.overallMastery < 85) "Next" else "Later"
             Json.obj(
-              "subject" -> m.subject,
-              "current_mastery" -> m.masteryScore,
+              "subject" -> p.subject,
+              "current_mastery" -> p.overallMastery,
               "focus_area" -> topic,
-              "actionable_task_title" -> s"Review ${m.subject} notes & practice ${topic}",
-              "recommended_duration_minutes" -> (if (m.masteryScore < 75) 45 else 30),
+              "actionable_task_title" -> s"Review ${p.subject} notes & practice ${topic}",
+              "recommended_duration_minutes" -> (if (p.overallMastery < 75) 45 else 30),
               "due_period" -> duePeriod,
-              "rationale" -> s"Current mastery is ${m.masteryScore}%. Review ${topic} to elevate performance."
+              "rationale" -> s"Current mastery is ${p.overallMastery}%. Review ${topic} to elevate performance."
             )
           }
           Ok(Json.obj(

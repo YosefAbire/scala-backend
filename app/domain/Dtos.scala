@@ -152,6 +152,28 @@ case class PlatformDashboardDto(
 object PlatformDashboardDto:
   implicit val format: OFormat[PlatformDashboardDto] = Json.format[PlatformDashboardDto]
 
+case class TopicMasteryDto(
+    topic: String,
+    masteryScore: Int,
+    attemptsCount: Int,
+    lastScore: Int
+)
+
+object TopicMasteryDto:
+  implicit val format: OFormat[TopicMasteryDto] = Json.format[TopicMasteryDto]
+
+case class SubjectLearningProgressDto(
+    userId: Long,
+    subject: String,
+    overallMastery: Int,
+    totalAssessmentsCompleted: Int,
+    topicMasteries: List[TopicMasteryDto],
+    recommendedFocusAreas: List[String]
+)
+
+object SubjectLearningProgressDto:
+  implicit val format: OFormat[SubjectLearningProgressDto] = Json.format[SubjectLearningProgressDto]
+
 case class ConvertRecommendationRequest(
     subject: String,
     taskTitle: String,
@@ -162,4 +184,5 @@ case class ConvertRecommendationRequest(
 
 object ConvertRecommendationRequest:
   implicit val format: OFormat[ConvertRecommendationRequest] = Json.format[ConvertRecommendationRequest]
+
 
