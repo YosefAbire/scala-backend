@@ -4,17 +4,21 @@ import javax.inject.{Inject, Singleton}
 import domain._
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
+import java.time.Instant
 
 @Singleton
 class HiSchoolRepository @Inject() ():
   private val notes = new ConcurrentHashMap[Long, StudyNote]()
   private val quizzes = new ConcurrentHashMap[Long, PracticeQuiz]()
+  private val quizAttempts = new ConcurrentHashMap[Long, QuizAttempt]()
   private val circles = new ConcurrentHashMap[Long, StudyCircle]()
   private val pathways = new ConcurrentHashMap[Long, GraduatePathway]()
   private val discussions = new ConcurrentHashMap[Long, DiscussionPost]()
   
   private val noteIdGen = new java.util.concurrent.atomic.AtomicLong(10)
+  private val quizAttemptIdGen = new java.util.concurrent.atomic.AtomicLong(100)
   private val discussionIdGen = new java.util.concurrent.atomic.AtomicLong(100)
+  private val circleIdGen = new java.util.concurrent.atomic.AtomicLong(10)
 
   // Seed default notes
   private val n1 = StudyNote(
@@ -34,15 +38,23 @@ class HiSchoolRepository @Inject() ():
   notes.put(n1.id, n1)
   notes.put(n2.id, n2)
 
-  // Seed default quizzes
-  private val q1 = PracticeQuiz(1, 1, "AP Chemistry Equilibrium & Entropy Sprint", "AP Chemistry", "formative", 10, 15, Some(92))
-  private val q2 = PracticeQuiz(2, 1, "AP Calculus BC Integration Diagnostic", "AP Calculus", "timed_sprint", 15, 20, Some(88))
+  // Seed default quizzes with questions
+  private val q1Questions = List(
+    QuizQuestionItem(1, "Under what thermodynamic condition is ΔG guaranteed negative?", List("ΔH < 0 and ΔS > 0", "ΔH > 0 and ΔS < 0", "ΔH = 0", "T = 0 K"), 0, "When enthalpy is negative and entropy is positive, ΔG = ΔH - TΔS is always negative."),
+    QuizQuestionItem(2, "What is the Gibbs Free Energy equation?", List("ΔG = ΔH - TΔS", "ΔG = ΔH + TΔS", "ΔG = TΔH - ΔS", "ΔG = ΔH / TΔS"), 0, "ΔG = ΔH - TΔS is the fundamental thermodynamic equation.")
+  )
+  private val q2Questions = List(
+    QuizQuestionItem(1, "What is the derivative of f(x) = x^3 - 4x?", List("3x^2 - 4", "3x^2 - 4x", "x^2 - 4", "3x^3"), 0, "Power Rule yields 3x^2 - 4.")
+  )
+
+  private val q1 = PracticeQuiz(1, 1, "AP Chemistry Equilibrium & Entropy Sprint", "AP Chemistry", "formative", 2, 15, Some(92), q1Questions)
+  private val q2 = PracticeQuiz(2, 1, "AP Calculus BC Integration Diagnostic", "AP Calculus", "timed_sprint", 1, 20, Some(88), q2Questions)
   quizzes.put(q1.id, q1)
   quizzes.put(q2.id, q2)
 
   // Seed default circles
-  private val c1 = StudyCircle(1, 1, 1, "AP Chemistry Problem Solvers", "AP Chemistry", "Today • 4:00 PM", isLive = true, membersCount = 12)
-  private val c2 = StudyCircle(2, 1, 1, "Calculus BC Whiteboard Group", "AP Calculus", "Tomorrow • 5:30 PM", isLive = false, membersCount = 8)
+  private val c1 = StudyCircle(1, 1, 1, "AP Chemistry Problem Solvers", "AP Chemistry", "Today • 4:00 PM", isLive = true, membersCount = 12, memberUserIds = List(1, 2, 4))
+  private val c2 = StudyCircle(2, 1, 1, "Calculus BC Whiteboard Group", "AP Calculus", "Tomorrow • 5:30 PM", isLive = false, membersCount = 8, memberUserIds = List(1, 3))
   circles.put(c1.id, c1)
   circles.put(c2.id, c2)
 
@@ -72,31 +84,112 @@ class HiSchoolRepository @Inject() ():
 
   def allNotes(): Seq[StudyNote] = notes.values().asScala.toSeq.sortBy(-_.createdAt.toEpochMilli)
   
+  def findNoteById(id: Long): Option[StudyNote] = Option(notes.get(id))
+
   def createNote(title: String, subject: String, summary: String, authorId: Long = 1, schoolId: Long = 1): StudyNote =
     val id = noteIdGen.incrementAndGet()
     val note = StudyNote(
       id, schoolId, authorId, title, subject, "Chapter 1", summary,
-      verified = true, verifiedByLabel = "Verified Faculty", downloadCount = 0
+      verified = false, verifiedByLabel = "", downloadCount = 0
     )
     notes.put(id, note)
     note
 
+  def updateNote(id: Long, title: Option[String], summary: Option[String]): Option[StudyNote] =
+    findNoteById(id).map { n =>
+      val updated = n.copy(
+        title = title.getOrElse(n.title),
+        summary = summary.getOrElse(n.summary)
+      )
+      notes.put(id, updated)
+      updated
+    }
+
+  def deleteNote(id: Long): Boolean = notes.remove(id) != null
+
+  def verifyNote(id: Long, verifierId: Long, verifierLabel: String, comment: Option[String]): Option[StudyNote] =
+    findNoteById(id).map { n =>
+      val updated = n.copy(
+        verified = true,
+        verifiedById = Some(verifierId),
+        verifiedByLabel = verifierLabel,
+        verifiedAt = Some(Instant.now()),
+        verificationComment = comment
+      )
+      notes.put(id, updated)
+      updated
+    }
+
   def incrementNoteDownload(id: Long): Option[StudyNote] =
-    Option(notes.get(id)).map { n =>
+    findNoteById(id).map { n =>
       val updated = n.copy(downloadCount = n.downloadCount + 1)
       notes.put(id, updated)
       updated
     }
 
   def allQuizzes(): Seq[PracticeQuiz] = quizzes.values().asScala.toSeq
-  def recordQuizScore(id: Long, score: Int): Option[PracticeQuiz] =
-    Option(quizzes.get(id)).map { q =>
-      val updated = q.copy(masteryScore = Some(score))
-      quizzes.put(id, updated)
+
+  def findQuizById(id: Long): Option[PracticeQuiz] = Option(quizzes.get(id))
+
+  def evaluateAndSaveQuizAttempt(quizId: Long, userId: Long, answers: Map[String, Int]): Option[QuizAttempt] =
+    findQuizById(quizId).map { q =>
+      val total = if (q.questions.nonEmpty) q.questions.length else q.questionsCount
+      var correct = 0
+
+      if (q.questions.nonEmpty) {
+        q.questions.foreach { item =>
+          val givenAnswer = answers.get(item.id.toString).orElse(answers.get(s"q_${item.id}"))
+          if (givenAnswer.contains(item.correctOptionIndex)) {
+            correct += 1
+          }
+        }
+      } else {
+        // Fallback calculation for sample quiz
+        correct = Math.min(total, answers.size)
+      }
+
+      val percentage = if (total > 0) Math.round((correct.toDouble / total.toDouble) * 100).toInt else 100
+      val attemptId = quizAttemptIdGen.incrementAndGet()
+      val attempt = QuizAttempt(attemptId, quizId, userId, answers, percentage, total, correct)
+
+      quizAttempts.put(attemptId, attempt)
+
+      // Update quiz mastery score
+      val updatedQuiz = q.copy(masteryScore = Some(percentage))
+      quizzes.put(quizId, updatedQuiz)
+
+      attempt
+    }
+
+  def findQuizResultsByUser(userId: Long): Seq[QuizAttempt] =
+    quizAttempts.values().asScala.toSeq.filter(_.userId == userId).sortBy(-_.createdAt.toEpochMilli)
+
+  def allCircles(): Seq[StudyCircle] = circles.values().asScala.toSeq
+
+  def findCircleById(id: Long): Option[StudyCircle] = Option(circles.get(id))
+
+  def createCircle(name: String, subject: String, leadId: Long, schoolId: Long = 1): StudyCircle =
+    val id = circleIdGen.incrementAndGet()
+    val circle = StudyCircle(id, schoolId, leadId, name, subject, "Tomorrow • 4:00 PM", isLive = false, membersCount = 1, memberUserIds = List(leadId))
+    circles.put(id, circle)
+    circle
+
+  def joinCircle(id: Long, userId: Long): Option[StudyCircle] =
+    findCircleById(id).map { c =>
+      val updatedMembers = if (c.memberUserIds.contains(userId)) c.memberUserIds else userId :: c.memberUserIds
+      val updated = c.copy(membersCount = updatedMembers.length, memberUserIds = updatedMembers)
+      circles.put(id, updated)
       updated
     }
 
-  def allCircles(): Seq[StudyCircle] = circles.values().asScala.toSeq
+  def leaveCircle(id: Long, userId: Long): Option[StudyCircle] =
+    findCircleById(id).map { c =>
+      val updatedMembers = c.memberUserIds.filterNot(_ == userId)
+      val updated = c.copy(membersCount = Math.max(0, updatedMembers.length), memberUserIds = updatedMembers)
+      circles.put(id, updated)
+      updated
+    }
+
   def allPathways(): Seq[GraduatePathway] = pathways.values().asScala.toSeq
 
   def findDiscussionsByCircle(circleId: Long): Seq[DiscussionPost] =

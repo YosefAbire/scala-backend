@@ -104,3 +104,50 @@ case class ActivateTokenRequest(
 
 object ActivateTokenRequest:
   implicit val format: OFormat[ActivateTokenRequest] = Json.format[ActivateTokenRequest]
+
+case class VerifyNoteRequest(
+    verifiedByLabel: Option[String],
+    comment: Option[String]
+)
+
+object VerifyNoteRequest:
+  implicit val format: OFormat[VerifyNoteRequest] = Json.format[VerifyNoteRequest]
+
+case class QuizAttemptSubmissionRequest(
+    answers: Map[String, Int]
+)
+
+object QuizAttemptSubmissionRequest:
+  implicit val format: OFormat[QuizAttemptSubmissionRequest] = Json.format[QuizAttemptSubmissionRequest]
+
+case class QuizResultDto(
+    quizId: Long,
+    quizTitle: String,
+    scorePercentage: Int,
+    totalQuestions: Int,
+    correctCount: Int,
+    attemptedAt: String
+)
+
+object QuizResultDto:
+  implicit val format: OFormat[QuizResultDto] = Json.format[QuizResultDto]
+
+case class UpdateMemberStatusRequest(
+    status: String
+)
+
+object UpdateMemberStatusRequest:
+  implicit val format: OFormat[UpdateMemberStatusRequest] = Json.format[UpdateMemberStatusRequest]
+
+case class PlatformDashboardDto(
+    totalSchools: Int,
+    totalStudents: Int,
+    totalTeachers: Int,
+    verifiedNotesCount: Int,
+    totalDownloadsCount: Int,
+    totalFocusSessionsCount: Int,
+    platformStatus: String = "Operational"
+)
+
+object PlatformDashboardDto:
+  implicit val format: OFormat[PlatformDashboardDto] = Json.format[PlatformDashboardDto]

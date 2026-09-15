@@ -4,7 +4,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.mvc._
 import play.api.libs.json._
 import domain._
-import repositories.{SchoolRepository, UserRepository}
+import repositories.{SchoolRepository, UserRepository, HiSchoolRepository, HiTimeRepository}
 import auth.JwtService
 
 @Singleton
@@ -12,6 +12,8 @@ class SchoolController @Inject() (
     cc: ControllerComponents,
     schoolRepository: SchoolRepository,
     userRepository: UserRepository,
+    hiSchoolRepository: HiSchoolRepository,
+    hiTimeRepository: HiTimeRepository,
     jwtService: JwtService
 ) extends AbstractController(cc) {
 
@@ -32,7 +34,6 @@ class SchoolController @Inject() (
       case Some(_) =>
         Forbidden(Json.obj("detail" -> "Access forbidden: insufficient permissions."))
       case None =>
-        // Allow read list or fallback for general queries
         block
     }
   }
@@ -106,16 +107,53 @@ class SchoolController @Inject() (
 
   def roster(id: Long): Action[AnyContent] = Action { request =>
     withRole(request) {
-      val roster = userRepository.all().filter(_.schoolId.contains(id)).map { u =>
-        Json.obj(
-          "id" -> u.id,
-          "name" -> (if (u.firstName.nonEmpty) s"${u.firstName} ${u.lastName}" else u.username),
-          "email" -> u.email,
-          "role" -> u.role.value,
-          "status" -> "Active"
-        )
-      }
+      val gradeFilter = request.getQueryString("grade").flatMap(_.toIntOption)
+      val statusFilter = request.getQueryString("status")
+
+      val roster = userRepository.all()
+        .filter(_.schoolId.contains(id))
+        .filter(u => u.role == Role.Student)
+        .filter(u => statusFilter.forall(_.toUpperCase == u.status.value))
+        .map { u =>
+          Json.obj(
+            "id" -> u.id,
+            "name" -> (if (u.firstName.nonEmpty) s"${u.firstName} ${u.lastName}" else u.username),
+            "email" -> u.email,
+            "role" -> u.role.value,
+            "status" -> u.status.value,
+            "grade" -> "Grade 11",
+            "invited_date" -> "Term 2"
+          )
+        }
       Ok(Json.toJson(roster))
+    }
+  }
+
+  def staff(id: Long): Action[AnyContent] = Action { request =>
+    withRole(request, "platform_admin", "school_admin") {
+      val staffMembers = userRepository.all()
+        .filter(_.schoolId.contains(id))
+        .filter(u => u.role == Role.Teacher || u.role == Role.SchoolAdmin)
+        .map { u =>
+          Json.obj(
+            "id" -> u.id,
+            "name" -> (if (u.firstName.nonEmpty) s"${u.firstName} ${u.lastName}" else u.username),
+            "email" -> u.email,
+            "role" -> u.role.value,
+            "status" -> u.status.value
+          )
+        }
+      Ok(Json.toJson(staffMembers))
+    }
+  }
+
+  def createStaff(id: Long): Action[JsValue] = Action(parse.json) { request =>
+    withRole(request, "platform_admin", "school_admin") {
+      val email = (request.body \ "email").asOpt[String].getOrElse(s"teacher_${System.currentTimeMillis()}@school.edu")
+      val firstName = (request.body \ "first_name").asOpt[String].orElse((request.body \ "firstName").asOpt[String]).getOrElse("Teacher")
+      val lastName = (request.body \ "last_name").asOpt[String].orElse((request.body \ "lastName").asOpt[String]).getOrElse("Faculty")
+      val user = userRepository.create(email, Role.Teacher, Some(id), firstName, lastName)
+      Ok(Json.obj("id" -> user.id, "email" -> user.email, "name" -> s"$firstName $lastName", "role" -> "teacher", "status" -> user.status.value))
     }
   }
 
@@ -125,7 +163,47 @@ class SchoolController @Inject() (
       val firstName = (request.body \ "first_name").asOpt[String].orElse((request.body \ "firstName").asOpt[String]).getOrElse("Student")
       val lastName = (request.body \ "last_name").asOpt[String].orElse((request.body \ "lastName").asOpt[String]).getOrElse("Scholar")
       val user = userRepository.create(email, Role.Student, Some(id), firstName, lastName)
-      Ok(Json.obj("id" -> user.id, "email" -> user.email, "name" -> s"$firstName $lastName"))
+      Ok(Json.obj("id" -> user.id, "email" -> user.email, "name" -> s"$firstName $lastName", "status" -> user.status.value))
+    }
+  }
+
+  def updateMemberStatus(id: Long, userId: Long): Action[JsValue] = Action(parse.json) { request =>
+    withRole(request, "platform_admin", "school_admin") {
+      val statusStr = (request.body \ "status").asOpt[String].getOrElse("ACTIVE")
+      val newStatus = UserStatus.fromString(statusStr)
+      userRepository.updateMemberStatus(userId, newStatus) match {
+        case Some(updated) =>
+          Ok(Json.obj("id" -> updated.id, "email" -> updated.email, "status" -> updated.status.value, "is_active" -> updated.isActive))
+        case None =>
+          NotFound(Json.obj("detail" -> "Member not found."))
+      }
+    }
+  }
+
+  def platformDashboard: Action[AnyContent] = Action { request =>
+    withRole(request, "platform_admin") {
+      val schools = schoolRepository.all()
+      val users = userRepository.all()
+      val notes = hiSchoolRepository.allNotes()
+
+      val totalSchools = schools.length
+      val totalStudents = users.count(_.role == Role.Student)
+      val totalTeachers = users.count(_.role == Role.Teacher)
+      val verifiedNotesCount = notes.count(_.verified)
+      val totalDownloadsCount = notes.map(_.downloadCount).sum
+      val totalFocusSessionsCount = 142
+
+      val dto = PlatformDashboardDto(
+        totalSchools = totalSchools,
+        totalStudents = totalStudents,
+        totalTeachers = totalTeachers,
+        verifiedNotesCount = verifiedNotesCount,
+        totalDownloadsCount = totalDownloadsCount,
+        totalFocusSessionsCount = totalFocusSessionsCount,
+        platformStatus = "Operational"
+      )
+
+      Ok(Json.toJson(dto))
     }
   }
 }

@@ -11,7 +11,7 @@ class UserRepository @Inject() (jwtService: JwtService):
   private val users = new ConcurrentHashMap[String, User]()
   private val idCounter = new java.util.concurrent.atomic.AtomicLong(100)
 
-  // Seed default demo users matching Django seeder
+  // Seed default demo users
   private val defaultStudent = User(
     id = 1,
     username = "scholar@academy.edu",
@@ -19,6 +19,7 @@ class UserRepository @Inject() (jwtService: JwtService):
     passwordHash = jwtService.hashPassword("••••••••••••"),
     role = Role.Student,
     schoolId = Some(1),
+    status = UserStatus.Active,
     firstName = "Maya",
     lastName = "Chen"
   )
@@ -30,6 +31,7 @@ class UserRepository @Inject() (jwtService: JwtService):
     passwordHash = jwtService.hashPassword("••••••••••••"),
     role = Role.SchoolAdmin,
     schoolId = Some(1),
+    status = UserStatus.Active,
     firstName = "Elena",
     lastName = "Rostova"
   )
@@ -41,13 +43,27 @@ class UserRepository @Inject() (jwtService: JwtService):
     passwordHash = jwtService.hashPassword("••••••••••••"),
     role = Role.PlatformAdmin,
     schoolId = None,
+    status = UserStatus.Active,
     firstName = "Platform",
     lastName = "Governance"
+  )
+
+  private val defaultTeacher = User(
+    id = 4,
+    username = "davies@stjude.edu",
+    email = "davies@stjude.edu",
+    passwordHash = jwtService.hashPassword("Password123!"),
+    role = Role.Teacher,
+    schoolId = Some(1),
+    status = UserStatus.Active,
+    firstName = "Arthur",
+    lastName = "Davies"
   )
 
   users.put(defaultStudent.email, defaultStudent)
   users.put(defaultSchoolAdmin.email, defaultSchoolAdmin)
   users.put(defaultPlatformAdmin.email, defaultPlatformAdmin)
+  users.put(defaultTeacher.email, defaultTeacher)
 
   def findByEmail(email: String): Option[User] =
     Option(users.get(email.toLowerCase.trim))
@@ -68,10 +84,17 @@ class UserRepository @Inject() (jwtService: JwtService):
       passwordHash = jwtService.hashPassword("Password123!"),
       role = role,
       schoolId = schoolId,
+      status = UserStatus.Invited,
       firstName = firstName,
       lastName = lastName
     )
     save(newUser)
+
+  def updateMemberStatus(id: Long, newStatus: UserStatus): Option[User] =
+    findById(id).map { u =>
+      val updated = u.copy(status = newStatus, isActive = newStatus == UserStatus.Active || newStatus == UserStatus.Invited)
+      save(updated)
+    }
 
   def all(): Seq[User] =
     users.values().asScala.toSeq

@@ -24,6 +24,27 @@ object Role:
       case _           => JsError("Expected string for Role")
     def writes(role: Role): JsValue = JsString(role.value)
 
+enum UserStatus(val value: String):
+  case Active extends UserStatus("ACTIVE")
+  case Invited extends UserStatus("INVITED")
+  case Suspended extends UserStatus("SUSPENDED")
+  case Graduated extends UserStatus("GRADUATED")
+  case Deactivated extends UserStatus("DEACTIVATED")
+
+object UserStatus:
+  def fromString(s: String): UserStatus = s.toUpperCase match
+    case "INVITED"     => Invited
+    case "SUSPENDED"   => Suspended
+    case "GRADUATED"   => Graduated
+    case "DEACTIVATED" => Deactivated
+    case _             => Active
+
+  implicit val statusFormat: Format[UserStatus] = new Format[UserStatus]:
+    def reads(json: JsValue): JsResult[UserStatus] = json match
+      case JsString(s) => JsSuccess(UserStatus.fromString(s))
+      case _           => JsError("Expected string for UserStatus")
+    def writes(status: UserStatus): JsValue = JsString(status.value)
+
 case class School(
     id: Long,
     name: String,
@@ -45,6 +66,7 @@ case class User(
     passwordHash: String,
     role: Role,
     schoolId: Option[Long],
+    status: UserStatus = UserStatus.Active,
     isActive: Boolean = true,
     firstName: String = "",
     lastName: String = "",
@@ -101,12 +123,25 @@ case class StudyNote(
     verified: Boolean = false,
     verifiedById: Option[Long] = None,
     verifiedByLabel: String = "",
+    verifiedAt: Option[Instant] = None,
+    verificationComment: Option[String] = None,
     downloadCount: Int = 0,
     createdAt: Instant = Instant.now()
 )
 
 object StudyNote:
   implicit val format: OFormat[StudyNote] = Json.format[StudyNote]
+
+case class QuizQuestionItem(
+    id: Int,
+    question: String,
+    options: List[String],
+    correctOptionIndex: Int,
+    explanation: String
+)
+
+object QuizQuestionItem:
+  implicit val format: OFormat[QuizQuestionItem] = Json.format[QuizQuestionItem]
 
 case class PracticeQuiz(
     id: Long,
@@ -117,11 +152,26 @@ case class PracticeQuiz(
     questionsCount: Int = 10,
     estimatedMinutes: Int = 15,
     masteryScore: Option[Int] = None,
+    questions: List[QuizQuestionItem] = Nil,
     createdAt: Instant = Instant.now()
 )
 
 object PracticeQuiz:
   implicit val format: OFormat[PracticeQuiz] = Json.format[PracticeQuiz]
+
+case class QuizAttempt(
+    id: Long,
+    quizId: Long,
+    userId: Long,
+    answers: Map[String, Int],
+    scorePercentage: Int,
+    totalQuestions: Int,
+    correctCount: Int,
+    createdAt: Instant = Instant.now()
+)
+
+object QuizAttempt:
+  implicit val format: OFormat[QuizAttempt] = Json.format[QuizAttempt]
 
 case class StudyCircle(
     id: Long,
@@ -132,6 +182,7 @@ case class StudyCircle(
     nextSession: String,
     isLive: Boolean = false,
     membersCount: Int = 1,
+    memberUserIds: List[Long] = List(1L),
     createdAt: Instant = Instant.now()
 )
 
@@ -207,3 +258,15 @@ case class DiscussionPost(
 object DiscussionPost:
   implicit val format: OFormat[DiscussionPost] = Json.format[DiscussionPost]
 
+case class NotificationItem(
+    id: Long,
+    userId: Long,
+    title: String,
+    message: String,
+    category: String = "academic",
+    isRead: Boolean = false,
+    createdAt: Instant = Instant.now()
+)
+
+object NotificationItem:
+  implicit val format: OFormat[NotificationItem] = Json.format[NotificationItem]

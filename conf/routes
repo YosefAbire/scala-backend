@@ -8,6 +8,9 @@ POST    /api/auth/refresh/               controllers.AuthController.refresh
 GET     /api/auth/me/                    controllers.AuthController.me
 POST    /api/auth/activate/              controllers.AuthController.activate
 
+# Platform Governance
+GET     /api/platform/dashboard          controllers.SchoolController.platformDashboard
+
 # Schools & Roster Management
 GET     /api/schools/                    controllers.SchoolController.list
 POST    /api/schools/                    controllers.SchoolController.create
@@ -15,14 +18,31 @@ GET     /api/schools/:id/                controllers.SchoolController.get(id: Lo
 POST    /api/schools/:id/admins/         controllers.SchoolController.createAdmin(id: Long)
 GET     /api/schools/:id/roster/         controllers.SchoolController.roster(id: Long)
 POST    /api/schools/:id/students/       controllers.SchoolController.createStudent(id: Long)
+GET     /api/schools/:id/staff/          controllers.SchoolController.staff(id: Long)
+POST    /api/schools/:id/staff/          controllers.SchoolController.createStaff(id: Long)
+PATCH   /api/schools/:id/members/:userId/ controllers.SchoolController.updateMemberStatus(id: Long, userId: Long)
 
 # HiSchool Archive & Learning Hub
 GET     /api/hischool/notes/             controllers.HiSchoolController.listNotes
 POST    /api/hischool/notes/            controllers.HiSchoolController.createNote
+GET     /api/hischool/notes/:id/         controllers.HiSchoolController.getNote(id: Long)
+PATCH   /api/hischool/notes/:id/         controllers.HiSchoolController.updateNote(id: Long)
+DELETE  /api/hischool/notes/:id/         controllers.HiSchoolController.deleteNote(id: Long)
+POST    /api/hischool/notes/:id/verify   controllers.HiSchoolController.verifyNote(id: Long)
+
 GET     /api/hischool/quizzes/           controllers.HiSchoolController.listQuizzes
+GET     /api/hischool/quizzes/:id/       controllers.HiSchoolController.getQuiz(id: Long)
+POST    /api/hischool/quizzes/:id/attempts controllers.HiSchoolController.submitQuizAttempt(id: Long)
+GET     /api/hischool/quizzes/:id/results controllers.HiSchoolController.getQuizResults(id: Long)
+
 GET     /api/hischool/circles/           controllers.HiSchoolController.listCircles
+POST    /api/hischool/circles/           controllers.HiSchoolController.createCircle
+POST    /api/hischool/circles/:id/join   controllers.HiSchoolController.joinCircle(id: Long)
+DELETE  /api/hischool/circles/:id/members controllers.HiSchoolController.leaveCircle(id: Long)
+GET     /api/hischool/circles/:id/members controllers.HiSchoolController.listCircleMembers(id: Long)
 GET     /api/hischool/circles/:id/discussions/ controllers.HiSchoolController.listDiscussions(id: Long)
 POST    /api/hischool/circles/:id/discussions/ controllers.HiSchoolController.createDiscussion(id: Long)
+
 GET     /api/hischool/pathways/          controllers.HiSchoolController.listPathways
 
 # HiTime Focus Sanctuary & Tasks
@@ -35,6 +55,9 @@ PATCH   /api/hitime/routines/:id/        controllers.HiTimeController.updateRout
 GET     /api/hitime/sessions/            controllers.HiTimeController.listSessions
 POST    /api/hitime/sessions/            controllers.HiTimeController.createSession
 
+# In-App Notifications
+GET     /api/notifications               controllers.NotificationController.listNotifications
+PATCH   /api/notifications/:id/read      controllers.NotificationController.markAsRead(id: Long)
 
 # AI Intelligence & Study Assistance Proxy
 POST    /api/ai/assistant/chat           controllers.AiController.chat
@@ -42,4 +65,3 @@ POST    /api/ai/tasks/breakdown          controllers.AiController.taskBreakdown
 POST    /api/ai/rag/search               controllers.AiController.ragSearch
 POST    /api/ai/nlp/summarize            controllers.AiController.summarizeNote
 POST    /api/ai/nlp/quiz-gen             controllers.AiController.generateQuiz
-
