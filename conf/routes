@@ -21,6 +21,8 @@ GET     /api/hischool/notes/             controllers.HiSchoolController.listNote
 POST    /api/hischool/notes/            controllers.HiSchoolController.createNote
 GET     /api/hischool/quizzes/           controllers.HiSchoolController.listQuizzes
 GET     /api/hischool/circles/           controllers.HiSchoolController.listCircles
+GET     /api/hischool/circles/:id/discussions/ controllers.HiSchoolController.listDiscussions(id: Long)
+POST    /api/hischool/circles/:id/discussions/ controllers.HiSchoolController.createDiscussion(id: Long)
 GET     /api/hischool/pathways/          controllers.HiSchoolController.listPathways
 
 # HiTime Focus Sanctuary & Tasks
@@ -29,7 +31,10 @@ POST    /api/hitime/tasks/               controllers.HiTimeController.createTask
 PATCH   /api/hitime/tasks/:id/           controllers.HiTimeController.updateTask(id: Long)
 DELETE  /api/hitime/tasks/:id/           controllers.HiTimeController.deleteTask(id: Long)
 GET     /api/hitime/routines/            controllers.HiTimeController.listRoutines
+PATCH   /api/hitime/routines/:id/        controllers.HiTimeController.updateRoutine(id: Long)
 GET     /api/hitime/sessions/            controllers.HiTimeController.listSessions
+POST    /api/hitime/sessions/            controllers.HiTimeController.createSession
+
 
 # AI Intelligence & Study Assistance Proxy
 POST    /api/ai/assistant/chat           controllers.AiController.chat

@@ -94,4 +94,17 @@ class AiService @Inject() (
     )
     postJson("/ai/nlp/quiz-gen", payload)
   }
+
+  def indexNoteChunk(noteId: Long, schoolId: Long, title: String, subject: String, chapter: String, content: String): Future[Either[String, JsValue]] = {
+    val payload = Json.obj(
+      "note_id" -> noteId,
+      "school_id" -> schoolId,
+      "title" -> title,
+      "subject" -> subject,
+      "chapter" -> chapter,
+      "content" -> content
+    )
+    postJson("/ai/rag/index", payload)
+  }
 }
+

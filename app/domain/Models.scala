@@ -193,3 +193,17 @@ case class RoutineItem(
 
 object RoutineItem:
   implicit val format: OFormat[RoutineItem] = Json.format[RoutineItem]
+
+case class DiscussionPost(
+    id: Long,
+    circleId: Long,
+    author: String,
+    authorInitials: String,
+    content: String,
+    likes: Int = 0,
+    timestamp: String = "Just now"
+)
+
+object DiscussionPost:
+  implicit val format: OFormat[DiscussionPost] = Json.format[DiscussionPost]
+

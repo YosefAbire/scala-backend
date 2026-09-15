@@ -113,6 +113,21 @@ class HiTimeController @Inject() (
     }
   }
 
+  def updateRoutine(id: Long): Action[JsValue] = Action(parse.json) { request =>
+    withUser(request) { userId =>
+      val doneOpt = (request.body \ "done").asOpt[Boolean]
+      doneOpt match {
+        case Some(d) =>
+          hiTimeRepository.toggleRoutineStatus(id, d) match {
+            case Some(updated) => Ok(Json.obj("id" -> updated.id, "done" -> updated.done))
+            case None => Ok(Json.obj("id" -> id, "done" -> d))
+          }
+        case None =>
+          Ok(Json.obj("id" -> id))
+      }
+    }
+  }
+
   def listSessions: Action[AnyContent] = Action { request =>
     withUser(request) { userId =>
       val sessions = hiTimeRepository.findSessionsByUser(userId)
@@ -127,4 +142,14 @@ class HiTimeController @Inject() (
       Ok(Json.toJson(dtos))
     }
   }
+
+  def createSession: Action[JsValue] = Action(parse.json) { request =>
+    withUser(request) { userId =>
+      val mode = (request.body \ "mode").asOpt[String].getOrElse("pomodoro")
+      val duration = (request.body \ "duration_minutes").asOpt[Int].getOrElse(25)
+      val session = hiTimeRepository.createFocusSession(userId, mode, duration)
+      Ok(Json.obj("id" -> session.id, "mode" -> session.mode, "duration_minutes" -> session.durationMinutes, "completed" -> session.completed))
+    }
+  }
 }
+

@@ -56,5 +56,19 @@ class HiTimeRepository @Inject() ():
   def findRoutinesByUser(userId: Long): Seq[RoutineItem] =
     routines.values().asScala.toSeq.filter(_.userId == userId)
 
+  def toggleRoutineStatus(id: Long, done: Boolean): Option[RoutineItem] =
+    Option(routines.get(id)).map { r =>
+      val updated = r.copy(done = done)
+      routines.put(id, updated)
+      updated
+    }
+
   def findSessionsByUser(userId: Long): Seq[FocusSession] =
     sessions.values().asScala.toSeq.filter(_.userId == userId)
+
+  def createFocusSession(userId: Long, mode: String, durationMinutes: Int): FocusSession =
+    val id = System.currentTimeMillis()
+    val session = FocusSession(id, userId, None, mode, durationMinutes, completed = true)
+    sessions.put(id, session)
+    session
+
