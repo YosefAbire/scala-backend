@@ -95,11 +95,10 @@ class AuthController @Inject() (
             NotFound(Json.obj("detail" -> "User profile not found."))
         }
       case None =>
-        // Fallback default student payload
-        val defaultDto = UserSessionDto("usr_student_1", "scholar@academy.edu", "Maya Chen", "student", "St. Jude Collegiate Academy", Some("Grade 11"), Some("Senior Science & Humanities"), avatarInitials = "MC")
-        Ok(Json.toJson(defaultDto))
+        Unauthorized(Json.obj("detail" -> "Authentication required."))
     }
   }
+
 
   def activate: Action[JsValue] = Action(parse.json) { request =>
     request.body.validate[ActivateTokenRequest] match {
